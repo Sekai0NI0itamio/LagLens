@@ -49,6 +49,8 @@ public final class LagLensMod implements ClientModInitializer {
     private static KeyBinding openKey;
     private static final ReportWriter REPORTS = new ReportWriter();
     private static Future<ReportWriter.ExportResult> pendingExport;
+    /** Set by commands/keybind; consumed on the next client tick (see below). */
+    private static volatile boolean pendingDashboardOpen;
     /** Auto-stopped capture waiting for an export slot; retried every tick, never dropped. */
     private static CaptureSession.CaptureResult queuedAutoResult;
 
@@ -73,8 +75,16 @@ public final class LagLensMod implements ClientModInitializer {
                 return;
             }
             session.onClientTick(client);
-            while (openKey.wasPressed()) {
+            if (pendingDashboardOpen) {
+                // Open a tick after the request: the chat screen closes itself
+                // after dispatching a command, and a synchronous setScreen from
+                // inside command execution is destroyed with it. Next-tick open
+                // is imperceptible and immune to that race.
+                pendingDashboardOpen = false;
                 openDashboard(client);
+            }
+            while (openKey.wasPressed()) {
+                requestDashboard();
             }
             pollAutoStop(client);
             pollPendingExport(client);
@@ -132,6 +142,15 @@ public final class LagLensMod implements ClientModInitializer {
                         .orElse("unknown");
             }
         }));
+    }
+
+    /**
+     * Requests the dashboard; the tick handler opens it on the next client
+     * tick. All entry points (command, keybind) use this so the screen is
+     * never created inside chat handling.
+     */
+    public static void requestDashboard() {
+        pendingDashboardOpen = true;
     }
 
     public static void openDashboard(MinecraftClient client) {

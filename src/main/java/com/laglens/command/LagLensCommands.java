@@ -30,7 +30,7 @@ public final class LagLensCommands {
             CommandDispatcher<FabricClientCommandSource> dispatcher) {
         dispatcher.register(ClientCommandManager.literal("laglens")
                 .executes(ctx -> {
-                    LagLensMod.openDashboard(ctx.getSource().getClient());
+                    LagLensMod.requestDashboard();
                     return 1;
                 })
                 .then(ClientCommandManager.literal("status").executes(ctx -> {

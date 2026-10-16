@@ -50,7 +50,7 @@ class ReportSchemaTest {
 
     @Test
     void builtReportValidatesAgainstSchema() {
-        JsonObject report = writer.buildJson(new LagLensConfig(), capture(), () -> env(),
+        JsonObject report = writer.buildJson(new LagLensConfig(), capture(), env(),
                 List.of(new ModInventoryCollector.ModEntry("sodium", "1.0", "Sodium")),
                 List.of("limitation one"));
         assertTrue(ReportSchema.isValid(report));
@@ -63,7 +63,7 @@ class ReportSchemaTest {
         CaptureSession c = new CaptureSession();
         c.start(CaptureSession.Mode.LIGHT, 0L, 0L);
         c.record(MetricsSnapshot.unavailable(1_000L));
-        JsonObject report = writer.buildJson(new LagLensConfig(), c.stop(List.of()), () -> env(),
+        JsonObject report = writer.buildJson(new LagLensConfig(), c.stop(List.of()), env(),
                 List.of(), List.of());
         assertTrue(ReportSchema.isValid(report));
         assertEquals("unavailable", report.getAsJsonObject("memory").get("status").getAsString());
@@ -76,7 +76,7 @@ class ReportSchemaTest {
     void privacyStripOmitsHostAndUser() {
         LagLensConfig cfg = new LagLensConfig();
         cfg.privacyStripEnv = true;
-        JsonObject report = writer.buildJson(cfg, capture(), () -> env(), List.of(), List.of());
+        JsonObject report = writer.buildJson(cfg, capture(), env(), List.of(), List.of());
         JsonObject environment = report.getAsJsonObject("environment");
         assertFalse(environment.has("host"));
         assertFalse(environment.has("user"));

@@ -4,6 +4,7 @@ import com.laglens.LagLensMod;
 import com.laglens.capture.CaptureSession;
 import com.laglens.capture.ReportWriter;
 import com.laglens.metrics.Clock;
+import com.laglens.session.LagLensSession;
 import com.mojang.brigadier.CommandDispatcher;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;

@@ -28,7 +28,7 @@ class CollectorLogicTest {
         c.recordLoad();
         c.recordUnload();
         assertTrue(c.eventsPerMinute() >= 0);
-        assertEquals(2, c.eventsNear(System.currentTimeMillis(), 60_000L));
+        assertEquals(2, c.eventsNear(com.laglens.metrics.Clock.milliTime(), 60_000L));
         c.reset();
         assertFalse(c.available());
     }

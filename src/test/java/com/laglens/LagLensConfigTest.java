@@ -26,11 +26,16 @@ class LagLensConfigTest {
         cfg.defaultPage = "nope";
         cfg.reportDir = "../escape";
         assertTrue(cfg.validate().size() >= 4);
-        assertEquals(34.0, cfg.spikeWarnMs, 1e-9);
+        // Out-of-range finite values clamp to the valid range edge (17.0),
+        // while non-finite values fall back to the default (see NaN check below).
+        assertEquals(17.0, cfg.spikeWarnMs, 1e-9);
         assertEquals(1800, cfg.historySeconds);
         assertEquals("LIGHT", cfg.monitoringLevel);
         assertEquals("overview", cfg.defaultPage);
         assertEquals("laglens-reports", cfg.reportDir);
+        cfg.spikeWarnMs = Double.NaN;
+        cfg.validate();
+        assertEquals(34.0, cfg.spikeWarnMs, 1e-9);
     }
 
     @Test

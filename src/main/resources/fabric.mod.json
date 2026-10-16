@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "laglens",
+  "version": "${version}",
+  "name": "LagLens",
+  "description": "Client-side performance diagnostics: frame-time analysis, memory and GC insight, entity/chunk/network correlation, evidence-based findings, and shareable local reports.",
+  "authors": [
+    "Sekai0NI0itamio"
+  ],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.laglens.LagLensMod"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.14",
+    "fabric-api": "*",
+    "minecraft": "~1.21.1",
+    "java": ">=21"
+  }
+}

@@ -135,8 +135,31 @@ public final class LagLensMod implements ClientModInitializer {
     }
 
     public static void openDashboard(MinecraftClient client) {
-        if (client != null && session != null) {
+        if (client == null || session == null) {
+            LOGGER.warn("LagLens dashboard requested but client/session unavailable.");
+            return;
+        }
+        if (!client.isOnThread()) {
+            client.execute(() -> openDashboard(client));
+            return;
+        }
+        try {
             client.setScreen(new LagLensScreen(session));
+            if (config.debugLogging) {
+                LOGGER.info("LagLens dashboard opened.");
+            }
+        } catch (Exception e) {
+            // Never fail silently: the exact cause goes to the log and to chat.
+            LOGGER.error("LagLens failed to open dashboard", e);
+            try {
+                if (client.inGameHud != null) {
+                    client.inGameHud.getChatHud().addMessage(Text.literal(
+                            "[LagLens] Could not open dashboard (" + e.getClass().getSimpleName()
+                                    + ": " + e.getMessage() + "). See latest.log and report this."));
+                }
+            } catch (Exception ignored) {
+                // Chat itself unavailable; the log above is the record.
+            }
         }
     }
 

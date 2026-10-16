@@ -139,15 +139,16 @@ public final class LagLensMod implements ClientModInitializer {
             LOGGER.warn("LagLens dashboard requested but client/session unavailable.");
             return;
         }
+        // Gate log: proves this build is loaded and the command reached us.
+        LOGGER.info("LagLens dashboard requested.");
         if (!client.isOnThread()) {
             client.execute(() -> openDashboard(client));
             return;
         }
         try {
             client.setScreen(new LagLensScreen(session));
-            if (config.debugLogging) {
-                LOGGER.info("LagLens dashboard opened.");
-            }
+            // Gate log: proves setScreen returned without throwing.
+            LOGGER.info("LagLens dashboard opened.");
         } catch (Exception e) {
             // Never fail silently: the exact cause goes to the log and to chat.
             LOGGER.error("LagLens failed to open dashboard", e);

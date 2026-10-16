@@ -16,6 +16,7 @@ import com.laglens.metrics.MetricsSnapshot;
 import net.minecraft.client.MinecraftClient;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;

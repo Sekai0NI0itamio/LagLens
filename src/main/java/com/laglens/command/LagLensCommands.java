@@ -10,9 +10,10 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.text.Text;
 
+import java.net.InetAddress;
+
 /**
  * Client-side {@code /laglens} command tree (no server plugin required).
- *
  * <ul>
  *   <li>{@code /laglens} — open the dashboard.</li>
  *   <li>{@code /laglens status} — one-line chat summary.</li>
@@ -140,7 +141,7 @@ public final class LagLensCommands {
         String user = System.getProperty("user.name", "unavailable");
         String host = "unavailable";
         try {
-            host = java.net.InetAddress.getLocalHost().getHostName();
+            host = InetAddress.getLocalHost().getHostName();
         } catch (Exception ignored) {
             // Host lookup is best-effort; reports mark it unavailable.
         }

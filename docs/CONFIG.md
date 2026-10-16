@@ -15,7 +15,7 @@ no placebo settings.
 | `monitoringLevel` | `"LIGHT"` | `LIGHT` totals only; `DETAILED` adds per-type entity/BE breakdowns |
 | `rollingBufferSec` | `30` | Pre-spike rolling data kept for captures |
 | `autoCaptureOnSevereSpike` | `false` | Start a LIGHT capture automatically on a severe spike |
-| `autoCaptureSec` | `20` | Length of automatic captures, seconds |
+| `autoCaptureSec` | `20` | Length of severe-spike automatic captures, seconds (manual captures run until stopped) |
 | `reportDir` | `"laglens-reports"` | Report directory under the game dir (no `..` allowed) |
 | `reportRetention` | `20` | How many reports are kept; older `laglens-report-*` files pruned on export |
 | `includeEnvMetadata` | `true` | Include OS/CPU/heap metadata in reports |

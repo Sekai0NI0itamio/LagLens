@@ -82,10 +82,12 @@ public final class LagLensCommands {
 
     private static int startCapture(FabricClientCommandSource src, CaptureSession.Mode mode) {
         CaptureSession capture = LagLensMod.session().capture();
-        boolean started = capture.start(mode, Clock.milliTime(),
-                LagLensMod.config().autoCaptureSec * 1000L);
+        // Manual captures run until stopped (deadline 0); only spike-triggered
+        // auto-captures use the configured auto-stop duration.
+        boolean started = capture.start(mode, Clock.milliTime(), 0L);
         src.sendFeedback(Text.literal(started
-                ? "[LagLens] Recording started (" + mode + "). Reproduce the issue, then /laglens capture stop."
+                ? "[LagLens] Recording started (" + mode + "). It keeps recording until /laglens capture stop (bounded at "
+                        + CaptureSession.MAX_SNAPSHOTS + " snapshots)."
                 : "[LagLens] Already recording. Use /laglens capture stop first."));
         return 1;
     }

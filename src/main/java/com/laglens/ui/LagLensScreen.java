@@ -100,8 +100,9 @@ public final class LagLensScreen extends Screen {
                 setNotice("Recording stopped and exporting; the path will print in chat.");
             }
         } else {
-            capture.start(CaptureSession.Mode.LIGHT, System.currentTimeMillis(),
-                    session.config().autoCaptureSec * 1000L);
+            // Manual capture: records until stopped (only spike-triggered
+            // auto-captures carry a deadline).
+            capture.start(CaptureSession.Mode.LIGHT, System.currentTimeMillis(), 0L);
             setNotice("Recording started — reproduce the lag, then press C to stop.");
         }
         // Rebuild footer buttons outside click dispatch (never re-enter init

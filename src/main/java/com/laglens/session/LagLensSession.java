@@ -55,6 +55,8 @@ public final class LagLensSession {
     private final Deque<GcMark> gcHistory = new ArrayDeque<>();
     private List<Finding> findings = List.of();
     private MetricsSnapshot lastSnapshot;
+    /** A capture that hit its auto-stop deadline; picked up by the mod entrypoint. */
+    private volatile CaptureSession.CaptureResult autoStoppedResult;
 
     private long tickCounter;
     private long overheadNanos;
@@ -128,8 +130,10 @@ public final class LagLensSession {
         }
         if (capture.state() == CaptureSession.State.RECORDING) {
             if (capture.checkAutoStop(Clock.milliTime())) {
-                // Stopped without findings here; the UI/command layer re-exports with analysis.
-                capture.stop(findings);
+                // Only spike-triggered auto-captures carry a deadline (manual
+                // captures pass 0 and never land here). Never discard silently:
+                // the entrypoint announces this in chat and exports it.
+                autoStoppedResult = capture.stop(findings);
             }
         }
         addOverhead(Clock.nanoTime() - t0);
@@ -369,6 +373,13 @@ public final class LagLensSession {
 
     public List<Finding> findings() {
         return findings;
+    }
+
+    /** Returns and clears a capture that hit its auto-stop deadline, if any. */
+    public synchronized CaptureSession.CaptureResult takeAutoStopped() {
+        CaptureSession.CaptureResult result = autoStoppedResult;
+        autoStoppedResult = null;
+        return result;
     }
 
     public MetricsSnapshot lastSnapshot() {

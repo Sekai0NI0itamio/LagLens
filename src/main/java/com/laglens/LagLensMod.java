@@ -49,6 +49,8 @@ public final class LagLensMod implements ClientModInitializer {
     private static KeyBinding openKey;
     private static final ReportWriter REPORTS = new ReportWriter();
     private static Future<ReportWriter.ExportResult> pendingExport;
+    /** Auto-stopped capture waiting for an export slot; retried every tick, never dropped. */
+    private static CaptureSession.CaptureResult queuedAutoResult;
 
     @Override
     public void onInitializeClient() {
@@ -74,6 +76,7 @@ public final class LagLensMod implements ClientModInitializer {
             while (openKey.wasPressed()) {
                 openDashboard(client);
             }
+            pollAutoStop(client);
             pollPendingExport(client);
         });
         ClientChunkEvents.CHUNK_LOAD.register((world, chunk) -> {
@@ -134,6 +137,34 @@ public final class LagLensMod implements ClientModInitializer {
     public static void openDashboard(MinecraftClient client) {
         if (client != null && session != null) {
             client.setScreen(new LagLensScreen(session));
+        }
+    }
+
+    /**
+     * Picks up captures that hit their auto-stop deadline: announces them in
+     * chat and exports them as soon as no other export is running. Retried
+     * every tick until the export starts, so the recording is never lost.
+     */
+    private static void pollAutoStop(MinecraftClient client) {
+        if (queuedAutoResult == null) {
+            queuedAutoResult = session.takeAutoStopped();
+        }
+        if (queuedAutoResult == null) {
+            return;
+        }
+        Future<ReportWriter.ExportResult> pending = pendingExport;
+        if (pending != null && !pending.isDone()) {
+            return;
+        }
+        CaptureSession.CaptureResult result = queuedAutoResult;
+        queuedAutoResult = null;
+        pendingExport = REPORTS.exportAsync(gameDir, config, result,
+                com.laglens.command.LagLensCommands::environment, session.modInventory().mods(),
+                session.limitations());
+        if (client.player != null) {
+            client.inGameHud.getChatHud().addMessage(Text.literal("[LagLens] Auto-capture finished ("
+                    + result.snapshots().size() + " snapshots over " + (result.durationMs() / 1000)
+                    + " s); exporting report…"));
         }
     }
 

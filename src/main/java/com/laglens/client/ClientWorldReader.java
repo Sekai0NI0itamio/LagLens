@@ -44,7 +44,7 @@ public final class ClientWorldReader implements LagLensSession.MinecraftWorldRea
     }
 
     private void sampleEntities(LagLensSession session, ClientWorld world, long nowMs) {
-        if (world == null) {
+        if (world == null || !session.config().enableEntitySampling) {
             session.entities().markUnavailable();
             return;
         }
@@ -76,6 +76,7 @@ public final class ClientWorldReader implements LagLensSession.MinecraftWorldRea
             ClientWorld world, long nowMs) {
         if (world == null || client.player == null
                 || !session.config().enableEntitySampling) {
+            session.entities().markBlockEntitiesUnavailable();
             return;
         }
         try {

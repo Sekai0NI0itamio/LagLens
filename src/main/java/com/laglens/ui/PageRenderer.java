@@ -86,10 +86,8 @@ final class PageRenderer {
             if (line-- <= 0 && visible()) {
                 ctx.drawTextWithShadow(screen.textRenderer(), Text.literal(text), x, y, HEADER);
                 y += 12;
-            } else if (line < 0) {
-                y += 0;
+                gap(2);
             }
-            gap(2);
         }
 
         void body(String text, int color) {

@@ -41,6 +41,11 @@ public final class EntityCollector {
 
     public void markUnavailable() {
         last = new Census(System.currentTimeMillis(), -1, -1, Collections.emptyMap(), false);
+        markBlockEntitiesUnavailable();
+    }
+
+    /** Clears only the block-entity census (entity totals stay as they are). */
+    public void markBlockEntitiesUnavailable() {
         blockEntities =
                 new BlockEntities(System.currentTimeMillis(), -1, Collections.emptyMap(), false);
     }

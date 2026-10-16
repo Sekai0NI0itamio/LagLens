@@ -4,7 +4,6 @@ import com.laglens.LagLensMod;
 import com.laglens.capture.CaptureSession;
 import com.laglens.capture.ReportWriter;
 import com.laglens.metrics.Clock;
-import com.laglens.session.LagLensSession;
 import com.mojang.brigadier.CommandDispatcher;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
@@ -92,35 +91,24 @@ public final class LagLensCommands {
 
     private static int stopCapture(FabricClientCommandSource src) {
         LagLensSession session = LagLensMod.session();
-        CaptureSession.CaptureResult result = session.capture().stop(session.findings());
-        if (result == null) {
+        if (session.capture().state() != CaptureSession.State.RECORDING) {
             src.sendFeedback(Text.literal("[LagLens] No recording in progress."));
             return 0;
         }
-        src.sendFeedback(Text.literal("[LagLens] Recording stopped: " + result.snapshots().size()
-                + " snapshots over " + (result.durationMs() / 1000) + " s. Use /laglens export."));
-        LagLensMod.trackExport(LagLensMod.reports().exportAsync(LagLensMod.gameDir(),
-                LagLensMod.config(), result, LagLensCommands.environment(),
-                session.modInventory().mods(), session.limitations()));
-        src.sendFeedback(Text.literal("[LagLens] Auto-export started; the path will print in chat."));
+        if (!LagLensMod.stopCaptureAndExport()) {
+            src.sendFeedback(Text.literal("[LagLens] An export is already running; try again shortly."));
+            return 0;
+        }
+        src.sendFeedback(Text.literal(
+                "[LagLens] Recording stopped and exporting; the path will print in chat."));
         return 1;
     }
 
     private static int exportReport(FabricClientCommandSource src) {
-        LagLensSession session = LagLensMod.session();
-        CaptureSession.CaptureResult result = session.capture().stop(session.findings());
-        if (result == null || result.snapshots().isEmpty()) {
-            // Export the live view when nothing was recorded: clearly labeled, single snapshot.
-            src.sendFeedback(
-                    Text.literal("[LagLens] Nothing recorded; exporting the current live view instead."));
-            CaptureSession live = new CaptureSession();
-            live.start(CaptureSession.Mode.LIGHT, Clock.milliTime(), 0L);
-            live.record(session.lastSnapshot());
-            result = live.stop(session.findings());
+        if (!LagLensMod.stopCaptureAndExport()) {
+            src.sendFeedback(Text.literal("[LagLens] An export is already running; try again shortly."));
+            return 0;
         }
-        LagLensMod.trackExport(LagLensMod.reports().exportAsync(LagLensMod.gameDir(),
-                LagLensMod.config(), result, environment(), session.modInventory().mods(),
-                session.limitations()));
         src.sendFeedback(Text.literal("[LagLens] Exporting; the path will print in chat."));
         return 1;
     }

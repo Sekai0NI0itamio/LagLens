@@ -1,5 +1,6 @@
 package com.laglens;
 
+import com.laglens.capture.CaptureSession;
 import com.laglens.capture.ReportWriter;
 import com.laglens.client.ClientWorldReader;
 import com.laglens.collectors.ModInventoryCollector;
@@ -93,7 +94,10 @@ public final class LagLensMod implements ClientModInitializer {
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             if (session != null) {
                 session.network().recordDisconnect(System.currentTimeMillis());
+                session.network().reset();
                 session.serverTick().markUnavailable();
+                session.chunks().markUnavailable();
+                session.entities().markUnavailable();
             }
         });
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> REPORTS.shutdown());
@@ -171,7 +175,27 @@ public final class LagLensMod implements ClientModInitializer {
         return REPORTS;
     }
 
-    public static void trackExport(Future<ReportWriter.ExportResult> future) {
-        pendingExport = future;
+    /**
+     * Stops an in-progress recording (if any) and exports the result, or
+     * exports the live view when nothing was recorded. Returns false when
+     * another export is still running, so concurrent exports can never orphan
+     * each other's completion feedback.
+     */
+    public static boolean stopCaptureAndExport() {
+        Future<ReportWriter.ExportResult> pending = pendingExport;
+        if (pending != null && !pending.isDone()) {
+            return false;
+        }
+        CaptureSession.CaptureResult result = session.capture().stop(session.findings());
+        if (result == null || result.snapshots().isEmpty()) {
+            CaptureSession live = new CaptureSession();
+            live.start(CaptureSession.Mode.LIGHT, System.currentTimeMillis(), 0L);
+            live.record(session.lastSnapshot());
+            result = live.stop(session.findings());
+        }
+        pendingExport = REPORTS.exportAsync(gameDir, config, result,
+                com.laglens.command.LagLensCommands::environment, session.modInventory().mods(),
+                session.limitations());
+        return true;
     }
 }

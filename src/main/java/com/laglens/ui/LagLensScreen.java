@@ -34,6 +34,9 @@ public final class LagLensScreen extends Screen {
     private int selectedPage;
     private int scroll;
     private int expandedFinding = -1;
+    private boolean pendingButtonRefresh;
+    private String notice;
+    private long noticeUntilMs;
     private final List<ClickTarget> clickTargets = new ArrayList<>();
 
     /** Clickable row rebuilt every frame: tab selection or finding expansion. */
@@ -89,23 +92,43 @@ public final class LagLensScreen extends Screen {
     private void toggleCapture() {
         CaptureSession capture = session.capture();
         if (capture.state() == CaptureSession.State.RECORDING) {
-            capture.stop(session.findings());
+            // Same stop-and-export path as /laglens capture stop: the recording
+            // is exported, never discarded.
+            if (!LagLensMod.stopCaptureAndExport()) {
+                setNotice("An export is already running; try again shortly.");
+            } else {
+                setNotice("Recording stopped and exporting; the path will print in chat.");
+            }
         } else {
             capture.start(CaptureSession.Mode.LIGHT, System.currentTimeMillis(),
                     session.config().autoCaptureSec * 1000L);
+            setNotice("Recording started — reproduce the lag, then press C to stop.");
         }
-        init();
+        // Rebuild footer buttons outside click dispatch (never re-enter init
+        // from inside a button callback).
+        pendingButtonRefresh = true;
+    }
+
+    private void setNotice(String text) {
+        this.notice = text;
+        this.noticeUntilMs = System.currentTimeMillis() + 5000L;
     }
 
     private void exportNow() {
-        close();
-        if (client != null && client.player != null) {
-            client.player.networkHandler.sendChatCommand("laglens export");
+        if (client == null || client.player == null) {
+            setNotice("Join a world or a server first — there is nothing to export yet.");
+            return;
         }
+        close();
+        client.player.networkHandler.sendChatCommand("laglens export");
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+        if (pendingButtonRefresh) {
+            pendingButtonRefresh = false;
+            init();
+        }
         renderBackground(context, mouseX, mouseY, delta);
         clickTargets.clear();
 
@@ -156,6 +179,10 @@ public final class LagLensScreen extends Screen {
         // Footer hints.
         String hints = "Up/Down tabs  PgUp/PgDn scroll  C capture  E export  Esc close";
         context.drawTextWithShadow(textRenderer, Text.literal(hints), 10, height - 18, 0xFF9AA0A6);
+        if (notice != null && System.currentTimeMillis() < noticeUntilMs) {
+            context.drawTextWithShadow(textRenderer, Text.literal(notice), 10, height - 30,
+                    0xFFF2C66D);
+        }
 
         super.render(context, mouseX, mouseY, delta);
     }

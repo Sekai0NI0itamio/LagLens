@@ -39,8 +39,13 @@ import java.util.concurrent.Future;
 public final class ReportWriter {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final DateTimeFormatter STAMP =
-            DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneOffset.UTC);
+            DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSS").withZone(ZoneOffset.UTC);
     private static final int MAX_SERIES_POINTS = 600;
+
+    /** Supplies environment facts; evaluated on the IO thread, never the client thread. */
+    public interface EnvSupplier {
+        EnvironmentInfo get();
+    }
 
     private final ExecutorService io = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "LagLens-ReportIO");
@@ -56,20 +61,21 @@ public final class ReportWriter {
     }
 
     public Future<ExportResult> exportAsync(Path gameDir, LagLensConfig config,
-            CaptureSession.CaptureResult capture, EnvironmentInfo env,
+            CaptureSession.CaptureResult capture, EnvSupplier envSupplier,
             List<ModInventoryCollector.ModEntry> mods, List<String> limitations) {
-        return io.submit(() -> export(gameDir, config, capture, env, mods, limitations));
+        return io.submit(() -> export(gameDir, config, capture, envSupplier, mods, limitations));
     }
 
     private ExportResult export(Path gameDir, LagLensConfig config,
-            CaptureSession.CaptureResult capture, EnvironmentInfo env,
+            CaptureSession.CaptureResult capture, EnvSupplier envSupplier,
             List<ModInventoryCollector.ModEntry> mods, List<String> limitations) {
         try {
             Path dir = gameDir.resolve(config.reportDir);
             Files.createDirectories(dir);
             String stamp = STAMP.format(Instant.ofEpochMilli(capture.stoppedAtMs()));
-            Path json = dir.resolve("laglens-report-" + stamp + ".json");
-            Path md = dir.resolve("laglens-report-" + stamp + ".md");
+            Path json = uniqueFile(dir, "laglens-report-" + stamp, ".json");
+            Path md = dir.resolve(json.getFileName().toString().replace(".json", ".md"));
+            EnvironmentInfo env = envSupplier == null ? null : envSupplier.get();
             JsonObject report = buildJson(config, capture, env, mods, limitations);
             try (Writer w = Files.newBufferedWriter(json)) {
                 GSON.toJson(report, w);
@@ -299,6 +305,17 @@ public final class ReportWriter {
         }
         md.append("\nFull machine-readable data is in the accompanying JSON file.\n");
         return md.toString();
+    }
+
+    /** First free sibling: base name plus -1, -2, ... on collision (same-millisecond exports). */
+    private static Path uniqueFile(Path dir, String base, String ext) {
+        Path candidate = dir.resolve(base + ext);
+        int n = 1;
+        while (Files.exists(candidate) && n < 1000) {
+            candidate = dir.resolve(base + "-" + n + ext);
+            n++;
+        }
+        return candidate;
     }
 
     private void prune(Path dir, int retention) throws IOException {

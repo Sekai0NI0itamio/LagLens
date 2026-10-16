@@ -11,11 +11,15 @@ import com.laglens.config.LagLensConfig;
 import com.laglens.metrics.MetricsSnapshot;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ReportSchemaTest {
@@ -46,7 +50,7 @@ class ReportSchemaTest {
 
     @Test
     void builtReportValidatesAgainstSchema() {
-        JsonObject report = writer.buildJson(new LagLensConfig(), capture(), env(),
+        JsonObject report = writer.buildJson(new LagLensConfig(), capture(), () -> env(),
                 List.of(new ModInventoryCollector.ModEntry("sodium", "1.0", "Sodium")),
                 List.of("limitation one"));
         assertTrue(ReportSchema.isValid(report));
@@ -59,7 +63,7 @@ class ReportSchemaTest {
         CaptureSession c = new CaptureSession();
         c.start(CaptureSession.Mode.LIGHT, 0L, 0L);
         c.record(MetricsSnapshot.unavailable(1_000L));
-        JsonObject report = writer.buildJson(new LagLensConfig(), c.stop(List.of()), env(),
+        JsonObject report = writer.buildJson(new LagLensConfig(), c.stop(List.of()), () -> env(),
                 List.of(), List.of());
         assertTrue(ReportSchema.isValid(report));
         assertEquals("unavailable", report.getAsJsonObject("memory").get("status").getAsString());
@@ -72,7 +76,7 @@ class ReportSchemaTest {
     void privacyStripOmitsHostAndUser() {
         LagLensConfig cfg = new LagLensConfig();
         cfg.privacyStripEnv = true;
-        JsonObject report = writer.buildJson(cfg, capture(), env(), List.of(), List.of());
+        JsonObject report = writer.buildJson(cfg, capture(), () -> env(), List.of(), List.of());
         JsonObject environment = report.getAsJsonObject("environment");
         assertFalse(environment.has("host"));
         assertFalse(environment.has("user"));
@@ -84,5 +88,19 @@ class ReportSchemaTest {
         wrong.addProperty("schema", "laglens-report/999");
         assertFalse(ReportSchema.isValid(wrong));
         assertFalse(ReportSchema.isValid(null));
+    }
+
+    @Test
+    void sameInstantExportsDoNotOverwrite(@TempDir Path gameDir) throws Exception {
+        CaptureSession.CaptureResult r = capture();
+        ReportWriter.ExportResult first = writer
+                .exportAsync(gameDir, new LagLensConfig(), r, () -> env(), List.of(), List.of())
+                .get(30, TimeUnit.SECONDS);
+        ReportWriter.ExportResult second = writer
+                .exportAsync(gameDir, new LagLensConfig(), r, () -> env(), List.of(), List.of())
+                .get(30, TimeUnit.SECONDS);
+        assertTrue(first.ok());
+        assertTrue(second.ok());
+        assertNotEquals(first.json(), second.json());
     }
 }

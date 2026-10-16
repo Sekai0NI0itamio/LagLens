@@ -40,7 +40,9 @@ jobs:
       - name: Verify the artifact exists and is non-empty
         run: |
           ls -la build/libs/
-          test -s build/libs/laglens-*.jar
+          for f in build/libs/laglens-*.jar; do
+            test -s "$f"
+          done
           echo "JAR verification passed."
 
       - name: Upload mod JAR
